@@ -1,0 +1,90 @@
+#!/bin/bash
+echo "Starting User Script..."
+
+##################
+# System Updates #
+##################
+echo "Commencing OS update..."
+
+sudo apt update -y
+
+
+# Upgrade after updating
+echo "Commencing OS upgrade..."
+
+sudo apt upgrade -y
+
+
+####################
+# Install Packages #
+####################
+echo "Installing required packages..."
+
+sudo apt install software-properties-common lsb-release wget
+
+
+
+#########################################################
+# Prepping for Wine Installation (Windows App Emulator) #
+#########################################################
+
+echo "Installing Wine keys and reqs..."
+
+# Creating Keyring Directory for Wine GPG key
+
+sudo mkdir -pm755 /etc/apt/keyrings
+
+sudo wget -O /etc/apt/keyrings/winehq-archive.key https://dl.winehq.org/wine-builds/winehq.key
+
+
+
+# Fetch latest version of Wine and adding it's repository
+
+echo "Fetch latest Wine version and adding repo..."
+
+sudo wget -NP /etc/apt/sources.list.d/ https://dl.winehq.org/wine-builds/$(lsb_release -is | tr '[:upper:]' '[:lower:]')/dists/$(lsb_release -cs)/winehq-$(lsb_release -cs).sources
+
+
+echo "Adding new architecture for wine repository"
+
+sudo dpkg --add-architecture i386
+
+
+
+#########################################
+# updating and installing Wine software #
+#########################################
+
+echo "System updating after adding Wine to repo..."
+sudo apt update -y
+sudo apt install --install-recommends winehq-staging -y
+
+
+echo "Adding extra packages for wine to work with the Enshrouded App on Ubuntu..."
+sudo apt install cabextract winbind screen xvfb -y
+
+sudo add-apt-repository multiverse -y
+
+
+###################################################
+# SteamCMD and Enshrouded Server App Installation #
+###################################################
+
+echo "Installing SteamCMD..."
+sudo apt update -y
+sudo apt install steamcmd -y
+
+
+
+# Creating a User to Run the Server on Ubuntu
+echo "Creating user to run the server..."
+sudo useradd -m enshrouded
+chown -R enshrouded:enshrouded /home/enshrouded
+sudo -u enshrouded/ -s
+cd ~
+
+# Server Installation
+echo "Installing Enshrouded Server Application..."
+/usr/games/steamcmd +@sSteamCmdForcePlatformType windows +force_install_dir /home/enshrouded/enshroudedserver +login anonymous +app_update 2278520 +quit
+
+
