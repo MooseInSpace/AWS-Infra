@@ -1,0 +1,24 @@
+---
+- name: Add WineHQ repository and install Wine
+  apt:
+    name:
+      - software-properties-common
+      - wget
+      - gnupg2
+    state: present
+
+- name: Add Wine repo key
+  copy:
+    src: winehq.key
+    dest: /etc/apt/keyrings/winehq.key
+
+- name: Add Wine repository
+  apt_repository:
+    repo: "deb [signed-by=/etc/apt/keyrings/winehq.key] https://dl.winehq.org/wine-builds/ubuntu jammy main"
+    state: present
+
+- name: Install Wine Stable
+  apt:
+    name: winehq-stable
+    state: present
+    update_cache: yes

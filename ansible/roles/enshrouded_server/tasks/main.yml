@@ -1,0 +1,15 @@
+---
+- name: Include OS dependencies
+  include_tasks: wine.yml
+
+- name: Install SteamCMD and download server
+  include_tasks: steamcmd.yml
+
+- name: Configure server JSON file
+  include_tasks: server_config.yml
+
+- name: Mount additional EBS volume
+  include_tasks: storage.yml
+
+- name: Create and enable systemd service
+  include_tasks: systemd.yml

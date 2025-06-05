@@ -1,0 +1,7 @@
+
+enshrouded_server_path: "/home/steam/.wine/drive_c/Program Files (x86)/Steam/steamapps/common/EnshroudedDedicatedServer"
+enshrouded_config_template: "/home/steam/.wine/drive_c/Program Files (x86)/Steam/steamapps/common/EnshroudedDedicatedServer/dedicated_server_config.json"
+steam_user: "steam"
+steamcmd_dir: "/home/steam/steamcmd"
+wine_prefix: "/home/steam/wineprefix"
+instance_IP: "{{ ansible_host }}"

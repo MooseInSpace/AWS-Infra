@@ -1,0 +1,104 @@
+
+stages:
+  - validate
+  - plan
+  - apply
+
+variables:
+  TF_ROOT: "terraform"
+
+
+#================Validate Stage Jobs================#
+
+tf_validate:
+  stage: validate
+  image:
+    name: hashicorp/terraform:light
+    entrypoint: [""]
+  script:
+    - cd $TF_ROOT         # Changes directory to the defined terraform root path
+    - terraform init      # Initializes tf service on runner
+    - terraform validate  # Checks validity of commands/syntax of .tf files within /terraform root path
+
+
+
+#================Plan Stage Jobs================#
+
+plan:
+  stage: plan
+  image:
+    name: hashicorp/terraform:light
+    entrypoint: [""]
+  script:
+    - cd $TF_ROOT
+    - terraform init
+    - terraform plan -out=tfplan                    # Outputs an outline of operations to be conducted from main.tf
+    - terraform show -no-color tfplan > tfplan.txt  # Saves the plan output to a readable .txt file
+
+
+  artifacts:                             # Artifacts that persist in the CI/CD pipeline environment for later use
+    untracked: false
+    when: on_success                     # Only persists artifacts in job succeeds
+    access: all
+    expire_in: "30 days"                 # Duration of persistence
+    paths:                               # Location paths for the artifacts to persist
+      - terraform/tfplan
+      - terraform/tfplan.txt
+      - terraform/.terraform.lock.hcl
+
+
+#================Apply Stage Jobs================#
+# All jobs within apply stage require manual trigger by user
+
+tf_apply:
+  stage: apply
+  image:
+    name: hashicorp/terraform:light
+    entrypoint: [""]
+  when: manual
+  script:
+    - cd $TF_ROOT
+    - terraform init
+    - terraform apply -auto-approve tfplan                    # Applies the commands from the tfplan output artifact from plan stage
+    - terraform output -raw instance_ip > ../instance_ip.txt  # Saves the provisioned EC2 instance(s) public IP
+    - terraform output -raw instance_id > ../instance_id.txt  # Saves the provisioned EC2 instance(s) instance ID parameter
+  artifacts:
+    untracked: false
+    when: on_success
+    expire_in: "30 days"
+    paths:
+      - instance_ip.txt                  # Persists the saved items in the pipeline environment for later use with ansible
+      - instance_id.txt
+
+ansible_apply:
+  stage: apply
+  image: python:3.10
+  when: manual
+  allow_failure: false
+  dependencies:
+    - tf_apply
+  before_script:
+    - pip install ansible boto3             # Installs ansible requirements/dependencies on runner
+  script:
+    - INSTANCE_ID=$(cat instance_id.txt)    # Assigning ec2 ID from terraform output file to runner runtime variable
+    - |                                     # Here file, creates ansible Inv.yml locally on runner and assigns the following ec2 instance values to it at runtime
+      cat <<EOF > ansible/inventory.yml 
+      plugin: amazon.aws.aws_ec2
+      regions:
+        - $TF_VAR_region
+      filters:
+        instance-id: ${INSTANCE_ID}
+      compose:
+        ansible_host: instance_id
+      strict: False
+      EOF
+    - echo "[defaults]" > ansible/ansible.cfg                           # Assigning the following edits under the ansible defaults service
+    - echo "inventory = ./ansible/inventory.yml" >> ansible/ansible.cfg # Editing inventory.yml location in .cfg file
+    - echo "host_key_checking = False" >> ansible/ansible.cfg           # SSM is being used so disabling the key check should reduce run time. Reference:https://docs.ansible.com/ansible/latest/reference_appendices/config.html#host-key-checking
+    - ANSIBLE_CONNECTION="amazon.aws.aws_ssm"                           # Instantiates ansible SSM connection to runner runtime variable
+    - |                                                                 # Executes the ansible playbook on EC2 intance based on variables defined at runtime
+      ansible-playbook -e "ansible_connection=$ANSIBLE_CONNECTION ansible_ssm_region=$AWS_REGION" ansible/playbook.yml
+
+  artifacts:
+    paths:
+      - ansible/inventory.yml

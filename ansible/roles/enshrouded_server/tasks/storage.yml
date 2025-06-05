@@ -1,0 +1,15 @@
+---
+- name: Create mount point
+  file:
+    path: /srv/enshrouded
+    state: directory
+    owner: "{{ steam_user }}"
+    group: "{{ steam_user }}"
+
+- name: Mount EBS volume
+  mount:
+    path: /srv/enshrouded
+    src: /dev/sdo
+    fstype: ext4
+    opts: defaults
+    state: mounted

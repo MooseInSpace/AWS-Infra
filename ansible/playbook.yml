@@ -1,0 +1,7 @@
+---
+- name: Configure Enshrouded Game Server
+  hosts: enshrouded
+  become: yes
+
+  roles:
+    - enshrouded_server
